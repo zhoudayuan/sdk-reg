@@ -11,13 +11,15 @@
 #include <stdio.h>
 #include <string.h>
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+// MASK_WR
 #define CANMOD_MASK                  0X1F
 #define CANIER_MASK                  0XFF
 #define CANBTR0_MASK                 0XDF
 #define CANBTR1_MASK                 0XFF
 #define CANOCR_MASK                  0X03
-
-
+#define CANACR_MASK                  0XFF
+#define CANRBSA_MASK                 0X3F
+#define CANCDR_MASK                  0XFF
 
 
 
@@ -56,8 +58,8 @@
 //#define WRITE_REG32_CAN(_addr,_val)                do(*((volatile unsigned int *)(_addr+WJ_CAN_BASE))=(_val))while(0)
 #define PRINT_REG32_CAN(_reg)                        do{printf("|%-25s|%#-7x|%#-7x|\n", #_reg, REG32(_reg+WJ_CAN_BASE), _reg);} while(0);
 #define PRINT_REG32_CAN_WRITE(_reg,_val)             do{printf("reg:[%s] op:[W] val:[%#x]\n", #_reg, _val);} while (0)
-#define GET_REG32_BIT(_idx, _val)                    (((_val & (1<<_idx)) >> _idx) & 0x1)
-#define GET_REG32_MULTI_BIT(_bitmask, _idx, _val)    (((_val & (_bitmask<<_idx)) >> _idx) & _bitmask)
+#define GET_REG32_BIT(_idx, _val)                    ((((_val) & (1<<_idx)) >> _idx) & 0x1)
+#define GET_REG32_MULTI_BIT(_bitmask, _idx, _val)    ((((_val) & (_bitmask<<_idx)) >> _idx) & _bitmask)
 
 
 //#define WRITE_REG32_CAN(_reg,_val)        do {REG32_CAN(_reg) = _val; printf("reg:[%s] op:[W] val:[%#x]\n", #_reg, _val);} while (0)
@@ -73,7 +75,7 @@ typedef struct _reg_info_t {
 } reg_info_t;
 
 
-typedef struct _reg_info_w_t {
+typedef struct _reg_info_wr_t {
     char     *field;
     char     *name;
     uint32_t  default_value;
@@ -81,7 +83,16 @@ typedef struct _reg_info_w_t {
     uint32_t  read;
     char     *access;
     char     *result;
-} reg_info_w_t;
+} reg_info_wr_t;
+
+
+typedef struct _check_wr_reg_t {
+    char     *name;
+    uint32_t  offset;
+    uint32_t  write;
+    uint32_t  read;
+    uint32_t  mask;
+} check_wr_reg_t;
 
 typedef struct _bit_field_t {
     uint32_t bit_0: 1;
@@ -105,7 +116,7 @@ typedef enum {
 } bit_CANMOD_e;
 
 
-reg_info_w_t  reg_info_w_CANMOD[] = {
+reg_info_wr_t  reg_info_wr_CANMOD[] = {
     [CANMOD_bit4] = {"4", "MOD[4]", 0, 0x0, 0x0, "W/R", NULL},
     [CANMOD_bit3] = {"3", "MOD[3]", 0, 0x0, 0x0, "W/R", NULL},
     [CANMOD_bit2] = {"2", "MOD[2]", 0, 0x0, 0x0, "W/R", NULL},
@@ -123,7 +134,7 @@ typedef enum {
     CANCMR_bit0
 } bit_CANCMR_e;
 
-reg_info_w_t  reg_info_w_CANCMR[] = {
+reg_info_wr_t  reg_info_w_CANCMR[] = {
     [CANCMR_bit4] = {"4", "CMR[4]", 0, 0x0, 0x0, "WO", NULL},
     [CANCMR_bit3] = {"3", "CMR[3]", 0, 0x0, 0x0, "WO", NULL},
     [CANCMR_bit2] = {"2", "CMR[2]", 0, 0x0, 0x0, "WO", NULL},
@@ -146,7 +157,7 @@ typedef enum {
     CANIER_bit0
 } bit_CANIER_e;
 
-reg_info_w_t  reg_info_w_CANIER[] = {
+reg_info_wr_t  reg_info_wr_CANIER[] = {
     [CANIER_bit7] = {"7", "IER[7]", 0, 0x0, 0x0, "W/R", NULL},
     [CANIER_bit6] = {"6", "IER[6]", 0, 0x0, 0x0, "W/R", NULL},
     [CANIER_bit5] = {"5", "IER[5]", 0, 0x0, 0x0, "W/R", NULL},
@@ -164,12 +175,12 @@ typedef enum {
     CANBTR0_bit7_6 = 0,
     CANBTR0_bit4_0
 } bit_CANBTR0_e;
-reg_info_w_t  reg_info_w_CANBTR0[] = {
+reg_info_wr_t  reg_info_wr_CANBTR0[] = {
     [CANBTR0_bit7_6] = {"7:6", "SJW[1:0]", 0, 0x0, 0x0, "W/R", NULL},
     [CANBTR0_bit4_0] = {"4:0", "BRP[4:0]", 0, 0x0, 0x0, "W/R", NULL},
 };
 
-//CANBTR1 
+//CANBTR1
 //Name: CAN Bus Timing Register 1.
 //Address offset: 0x018
 typedef enum {
@@ -177,7 +188,7 @@ typedef enum {
     CANBTR1_bit6_4,
     CANBTR1_bit3_0
 } bit_CANBTR1_e;
-reg_info_w_t  reg_info_w_CANBTR1[] = {
+reg_info_wr_t  reg_info_wr_CANBTR1[] = {
     [CANBTR1_bit7]   = {"7",   "SAM",        0, 0x0, 0x0, "W/R", NULL},
     [CANBTR1_bit6_4] = {"6:4", "TSEG2[2:0]", 0, 0x0, 0x0, "W/R", NULL},
     [CANBTR1_bit3_0] = {"3:0", "TSEG1[3:0]", 0, 0x0, 0x0, "W/R", NULL},
@@ -187,7 +198,7 @@ typedef enum {
     CANOCR_bit1_0
 } bit_CANOCR_e;
 
-reg_info_w_t  reg_info_w_CANOCR[] = {
+reg_info_wr_t  reg_info_wr_CANOCR[] = {
     [CANOCR_bit1_0] = {"1:0", "OCMODE", 0, 0x0, 0x0, "W/R", NULL},
 };
 
@@ -200,8 +211,8 @@ typedef enum {
     CANACR_bit3_0
 } bit_CANACR_e;
 
-reg_info_w_t  reg_info_w_CANACR[] = {
-    [CANACR_bit7_4] = {"7:4", "AMR[1:0]", 0, 0x0, 0x0, "W/R", NULL},
+reg_info_wr_t  reg_info_wr_CANACR[] = {
+    [CANACR_bit7_4] = {"7:4", "AMR[3:0]", 0, 0x0, 0x0, "W/R", NULL},
     [CANACR_bit3_0] = {"3:0", "ACR[3:0]", 0, 0x0, 0x0, "W/R", NULL},
 };
 
@@ -211,9 +222,8 @@ reg_info_w_t  reg_info_w_CANACR[] = {
 typedef enum {
     CANRBSA_bit5_0 = 0
 } bit_CANRBSA_e;
-
-reg_info_w_t  reg_info_w_CANRBSA[] = {
-    [CANRBSA_bit5_0] = {"5:0", "RBSA", 0xc0, 0x0, 0x0, "W/R", NULL},
+reg_info_wr_t  reg_info_wr_CANRBSA[] = {
+    [CANRBSA_bit5_0] = {"5:0", "RBSA", 0, 0x0, 0x0, "W/R", NULL},
 };
 
 // Name: CAN Clock Divider Register.
@@ -221,8 +231,7 @@ reg_info_w_t  reg_info_w_CANRBSA[] = {
 typedef enum {
     CANCDR_bit7_0 = 0
 } bit_CANCDR_e;
-
-reg_info_w_t  reg_info_w_CANCDR[] = {
+reg_info_wr_t  reg_info_wr_CANCDR[] = {
     [CANCDR_bit7_0] = {"7:0", "CDR", 0xc0, 0x0, 0x0, "W/R", NULL},
 };
 
@@ -231,11 +240,18 @@ reg_info_w_t  reg_info_w_CANCDR[] = {
 static void show_all_reg();
 static void show_reg_info_CANMOD(uint32_t reg_val);
 static void print_reg_info_read(reg_info_t *p_reg_info, uint32_t reg_info_len);
-static void print_reg_info_write(reg_info_w_t *reg_info_w, uint32_t reg_info_w_len);
+static void print_reg_info_write(reg_info_wr_t *reg_info_w, uint32_t reg_info_w_len);
 static void write_all_reg(uint32_t reg_write);
 static void wr_reg_info_CANMOD(uint32_t reg_write);
 static void wr_reg_info_CANIER(uint32_t reg_write);
+static void wr_reg_info_CANBTR0(uint32_t reg_write);
+static void wr_reg_info_CANBTR1(uint32_t reg_write);
+static void wr_reg_info_CANOCR(uint32_t reg_write);
+static void wr_reg_info_CANACR(uint32_t reg_write);
+static void wr_reg_info_CANRBSA(uint32_t reg_write);
+static void wr_reg_info_CANCDR(uint32_t reg_write);
 
+static void check_wr_reg_info(check_wr_reg_t *p_check, reg_info_wr_t *p_reg, uint32_t reg_len);
 
 int main(void)
 {
@@ -246,17 +262,21 @@ int main(void)
 
     //show_all_reg();
     //show_reg_info_CANMOD(REG32_CAN(CANMOD));
-
-
-
     //WRITE_REG32_CAN(CANMOD, 0xffffffff);
     //wr_reg_info_CANMOD
-
     //wr_reg_info_CANMOD(0xffffffff);
-
     //show_reg_info_CANMOD(REG32_CAN(CANMOD));
-    write_all_reg(0xffffffff);
-    show_all_reg();
+    //write_all_reg(0xffffffff);
+    //show_all_reg();
+
+    wr_reg_info_CANMOD(0xffffffff);
+    wr_reg_info_CANIER(0xffffffff);
+    wr_reg_info_CANBTR0(0xffffffff);
+    wr_reg_info_CANBTR1(0xffffffff);
+    wr_reg_info_CANOCR(0xffffffff);
+    wr_reg_info_CANACR(0xffffffff);
+    wr_reg_info_CANRBSA(0xffffffff);
+    wr_reg_info_CANCDR(0xffffffff);
     return 0;
 }
 
@@ -430,7 +450,7 @@ static void print_reg_info_read(reg_info_t *p_reg_info, uint32_t reg_info_len)
     }
 }
 
-static void print_reg_info_write(reg_info_w_t *reg_info_w, uint32_t reg_info_w_len)
+static void print_reg_info_write(reg_info_wr_t *reg_info_w, uint32_t reg_info_w_len)
 {
     int i;
     printf("|------|----------|--------|------|------|------|---|\n");
@@ -448,149 +468,224 @@ static void print_reg_info_write(reg_info_w_t *reg_info_w, uint32_t reg_info_w_l
         printf("|------|----------|--------|------|------|------|---|\n");
     }
 }
-
+#if 0
 static void wr_reg_info_CANMOD(uint32_t reg_write)
 {
     uint32_t i;
     uint32_t reg_read;
     REG32_CAN(CANMOD) = reg_write;
-    reg_info_w_CANMOD[CANMOD_bit0].write = GET_REG32_BIT(0, reg_write);
-    reg_info_w_CANMOD[CANMOD_bit1].write = GET_REG32_BIT(1, reg_write);
-    reg_info_w_CANMOD[CANMOD_bit2].write = GET_REG32_BIT(2, reg_write);
-    reg_info_w_CANMOD[CANMOD_bit3].write = GET_REG32_BIT(3, reg_write);
-    reg_info_w_CANMOD[CANMOD_bit4].write = GET_REG32_BIT(4, reg_write);
+    reg_info_wr_CANMOD[CANMOD_bit0].write = GET_REG32_BIT(0, reg_write);
+    reg_info_wr_CANMOD[CANMOD_bit1].write = GET_REG32_BIT(1, reg_write);
+    reg_info_wr_CANMOD[CANMOD_bit2].write = GET_REG32_BIT(2, reg_write);
+    reg_info_wr_CANMOD[CANMOD_bit3].write = GET_REG32_BIT(3, reg_write);
+    reg_info_wr_CANMOD[CANMOD_bit4].write = GET_REG32_BIT(4, reg_write);
     reg_read = REG32_CAN(CANMOD);
-    reg_info_w_CANMOD[CANMOD_bit0].read  = GET_REG32_BIT(0, reg_read);
-    reg_info_w_CANMOD[CANMOD_bit1].read  = GET_REG32_BIT(1, reg_read);
-    reg_info_w_CANMOD[CANMOD_bit2].read  = GET_REG32_BIT(2, reg_read);
-    reg_info_w_CANMOD[CANMOD_bit3].read  = GET_REG32_BIT(3, reg_read);
-    reg_info_w_CANMOD[CANMOD_bit4].read  = GET_REG32_BIT(4, reg_read);
+    reg_info_wr_CANMOD[CANMOD_bit0].read  = GET_REG32_BIT(0, reg_read);
+    reg_info_wr_CANMOD[CANMOD_bit1].read  = GET_REG32_BIT(1, reg_read);
+    reg_info_wr_CANMOD[CANMOD_bit2].read  = GET_REG32_BIT(2, reg_read);
+    reg_info_wr_CANMOD[CANMOD_bit3].read  = GET_REG32_BIT(3, reg_read);
+    reg_info_wr_CANMOD[CANMOD_bit4].read  = GET_REG32_BIT(4, reg_read);
 
     if ((reg_read & CANMOD_MASK) != (reg_write & CANMOD_MASK)) {
-        for (i = 0; i < ARRAY_SIZE(reg_info_w_CANMOD); i++) {
-            if (strcmp(reg_info_w_CANMOD[i].access, "W/R") == 0) {
-                reg_info_w_CANMOD[i].result = (reg_info_w_CANMOD[i].write != reg_info_w_CANMOD[i].read) ? "X" : "";
+        for (i = 0; i < ARRAY_SIZE(reg_info_wr_CANMOD); i++) {
+            if (strcmp(reg_info_wr_CANMOD[i].access, "W/R") == 0) {
+                reg_info_wr_CANMOD[i].result = (reg_info_wr_CANMOD[i].write != reg_info_wr_CANMOD[i].read) ? "X" : "";
             }
         }
     }
     printf("reg:[%s] offset:[%#x]\n", "CANMOD", CANMOD);
-    print_reg_info_write(reg_info_w_CANMOD, ARRAY_SIZE(reg_info_w_CANMOD));
+    print_reg_info_write(reg_info_wr_CANMOD, ARRAY_SIZE(reg_info_wr_CANMOD));
     printf("write: [%#x]\nread:  [%#x]\nMASK:  [%#x]\nresult:[%s]\n\n", reg_write, reg_read, CANMOD_MASK, (reg_read & CANMOD_MASK) != (reg_write & CANMOD_MASK) ? "X" : "ok");
+}
+#endif
+
+
+static void check_wr_reg_info(check_wr_reg_t *p_check, reg_info_wr_t *p_reg, uint32_t reg_len)
+{
+    uint32_t i;
+    if ((p_check->write & p_check->mask) != (p_check->read & p_check->mask)) {
+        for (i = 0; i < reg_len; i++) {
+            if (strcmp(p_reg[i].access, "W/R") == 0) {
+                p_reg[i].result = (p_reg[i].write != p_reg[i].read) ? "X" : "";
+            }
+        }
+        printf("reg:[%s] offset:[%#x]\n", p_check->name, p_check->offset);
+        print_reg_info_write(p_reg, reg_len);
+    }
+    printf("CHECK:[%s] w:[%#x] r:[%#x] mask:[%#x] result:[%s]\n\n",
+           p_check->name,
+           p_check->write,
+           p_check->read,
+           p_check->mask,
+           (p_check->write & p_check->mask) != (p_check->read & p_check->mask) ? "X" : "ok");
+}
+
+
+static void wr_reg_info_CANMOD(uint32_t reg_write)
+{
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANMOD";
+    check_wr_reg.offset = CANMOD;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANMOD_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANMOD;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANMOD);
+    //-----------------------------------------------------------
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;
+    p_reg_info[CANMOD_bit0].write = GET_REG32_BIT(0, check_wr_reg.write);
+    p_reg_info[CANMOD_bit1].write = GET_REG32_BIT(1, check_wr_reg.write);
+    p_reg_info[CANMOD_bit2].write = GET_REG32_BIT(2, check_wr_reg.write);
+    p_reg_info[CANMOD_bit3].write = GET_REG32_BIT(3, check_wr_reg.write);
+    p_reg_info[CANMOD_bit4].write = GET_REG32_BIT(4, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANMOD_bit0].read  = GET_REG32_BIT(0, check_wr_reg.read);
+    p_reg_info[CANMOD_bit1].read  = GET_REG32_BIT(1, check_wr_reg.read);
+    p_reg_info[CANMOD_bit2].read  = GET_REG32_BIT(2, check_wr_reg.read);
+    p_reg_info[CANMOD_bit3].read  = GET_REG32_BIT(3, check_wr_reg.read);
+    p_reg_info[CANMOD_bit4].read  = GET_REG32_BIT(4, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
 }
 
 static void wr_reg_info_CANIER(uint32_t reg_write)
 {
-    uint32_t      i;
-    uint32_t      reg_read;
-    uint32_t      reg32        = CANIER;
-    char         *p_reg32_str  = "CANIER";
-    uint32_t      mask         = CANIER_MASK;
-    reg_info_w_t *p_reg_info   = reg_info_w_CANIER;
-    uint32_t      reg_info_len = ARRAY_SIZE(reg_info_w_CANIER);
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANIER";
+    check_wr_reg.offset = CANIER;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANIER_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANIER;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANIER);
     //-----------------------------------------------------------
-    printf("reg:[%s] offset:[%#x]\n", p_reg32_str, reg32);
-    REG32_CAN(reg32) = reg_write;
-    p_reg_info[CANIER_bit0].write = GET_REG32_BIT(0, reg_write);
-    p_reg_info[CANIER_bit1].write = GET_REG32_BIT(1, reg_write);
-    p_reg_info[CANIER_bit2].write = GET_REG32_BIT(2, reg_write);
-    p_reg_info[CANIER_bit3].write = GET_REG32_BIT(3, reg_write);
-    p_reg_info[CANIER_bit4].write = GET_REG32_BIT(4, reg_write);
-    p_reg_info[CANIER_bit5].write = GET_REG32_BIT(5, reg_write);
-    p_reg_info[CANIER_bit6].write = GET_REG32_BIT(6, reg_write);
-    p_reg_info[CANIER_bit7].write = GET_REG32_BIT(7, reg_write);
-    reg_read = REG32_CAN(reg32);
-    p_reg_info[CANIER_bit0].read  = GET_REG32_BIT(0, reg_read);
-    p_reg_info[CANIER_bit1].read  = GET_REG32_BIT(1, reg_read);
-    p_reg_info[CANIER_bit2].read  = GET_REG32_BIT(2, reg_read);
-    p_reg_info[CANIER_bit3].read  = GET_REG32_BIT(3, reg_read);
-    p_reg_info[CANIER_bit4].read  = GET_REG32_BIT(4, reg_read);
-    p_reg_info[CANIER_bit5].read  = GET_REG32_BIT(5, reg_read);
-    p_reg_info[CANIER_bit6].read  = GET_REG32_BIT(6, reg_read);
-    p_reg_info[CANIER_bit7].read  = GET_REG32_BIT(7, reg_read);
-    if ((reg_read & mask) != (reg_write & mask)) {
-        for (i = 0; i < reg_info_len; i++) {
-            if (strcmp(p_reg_info[i].access, "W/R") == 0) {
-                p_reg_info[i].result = (p_reg_info[i].write != p_reg_info[i].read) ? "X" : "";
-            }
-        }
-        print_reg_info_write(p_reg_info, reg_info_len);
-        printf("write: [%#x]\nread:  [%#x]\nMASK:  [%#x]\nresult:[%s]\n\n", reg_write, reg_read, mask, (reg_read & mask) != (reg_write & mask) ? "X" : "ok");
-    }
-    else
-    {
-        printf("reg:[%s] write:[%#x] read:[%#x] result:[OK]\n", p_reg32_str, reg_write, reg_read);
-    }
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;
+    p_reg_info[CANIER_bit0].write = GET_REG32_BIT(0, check_wr_reg.write);
+    p_reg_info[CANIER_bit1].write = GET_REG32_BIT(1, check_wr_reg.write);
+    p_reg_info[CANIER_bit2].write = GET_REG32_BIT(2, check_wr_reg.write);
+    p_reg_info[CANIER_bit3].write = GET_REG32_BIT(3, check_wr_reg.write);
+    p_reg_info[CANIER_bit4].write = GET_REG32_BIT(4, check_wr_reg.write);
+    p_reg_info[CANIER_bit5].write = GET_REG32_BIT(5, check_wr_reg.write);
+    p_reg_info[CANIER_bit6].write = GET_REG32_BIT(6, check_wr_reg.write);
+    p_reg_info[CANIER_bit7].write = GET_REG32_BIT(7, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANIER_bit0].read  = GET_REG32_BIT(0, check_wr_reg.read);
+    p_reg_info[CANIER_bit1].read  = GET_REG32_BIT(1, check_wr_reg.read);
+    p_reg_info[CANIER_bit2].read  = GET_REG32_BIT(2, check_wr_reg.read);
+    p_reg_info[CANIER_bit3].read  = GET_REG32_BIT(3, check_wr_reg.read);
+    p_reg_info[CANIER_bit4].read  = GET_REG32_BIT(4, check_wr_reg.read);
+    p_reg_info[CANIER_bit5].read  = GET_REG32_BIT(5, check_wr_reg.read);
+    p_reg_info[CANIER_bit6].read  = GET_REG32_BIT(6, check_wr_reg.read);
+    p_reg_info[CANIER_bit7].read  = GET_REG32_BIT(7, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
 }
 
 static void wr_reg_info_CANBTR0(uint32_t reg_write)
 {
-    uint32_t      i;
-    uint32_t      reg_read;
-    uint32_t      reg32        = CANBTR0;
-    char         *p_reg32_str  = "CANBTR0";
-    uint8_t       mask         = CANBTR0_MASK;
-    reg_info_w_t *p_reg_info   = reg_info_w_CANBTR0;
-    uint32_t      reg_info_len = ARRAY_SIZE(reg_info_w_CANBTR0);
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANBTR0";
+    check_wr_reg.offset = CANBTR0;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANBTR0_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANBTR0;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANBTR0);
     //-----------------------------------------------------------
-    REG32_CAN(reg32) = reg_write;
-    p_reg_info[CANBTR0_bit4_0].write = GET_REG32_MULTI_BIT(0x1f, 0, reg_write);
-    p_reg_info[CANBTR0_bit7_6].write = GET_REG32_MULTI_BIT(0x03, 6, reg_write);
-    reg_read = REG32_CAN(reg32);
-    p_reg_info[CANBTR0_bit4_0].read  = GET_REG32_MULTI_BIT(0x1f, 0, reg_write);
-    p_reg_info[CANBTR0_bit7_6].read  = GET_REG32_MULTI_BIT(0x03, 6, reg_write);
-    printf("reg:[%s] offset:[%#x]\n", p_reg32_str, reg32);
-    if ((reg_read & mask) != (reg_write & mask)) {
-        for (i = 0; i < reg_info_len; i++) {
-            if (strcmp(p_reg_info[i].access, "W/R") == 0) {
-                p_reg_info[i].result = (p_reg_info[i].write != p_reg_info[i].read) ? "X" : "";
-            }
-        }
-        print_reg_info_write(p_reg_info, reg_info_len);
-        printf("write: [%#x]\nread:  [%#x]\nMASK:  [%#x]\nresult:[%s]\n\n", reg_write, reg_read, mask, (reg_read & mask) != (reg_write & mask) ? "X" : "ok");
-    }
-    else
-    {
-        printf("reg:[%s] write:[%#x] read:[%#x] result:[OK]\n", p_reg32_str, reg_write, reg_read);
-    }
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;;
+    p_reg_info[CANBTR0_bit4_0].write = GET_REG32_MULTI_BIT(0x1f, 0, check_wr_reg.write);
+    p_reg_info[CANBTR0_bit7_6].write = GET_REG32_MULTI_BIT(0x03, 6, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANBTR0_bit4_0].read  = GET_REG32_MULTI_BIT(0x1f, 0, check_wr_reg.read);
+    p_reg_info[CANBTR0_bit7_6].read  = GET_REG32_MULTI_BIT(0x03, 6, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
 }
 
 static void wr_reg_info_CANBTR1(uint32_t reg_write)
 {
-    uint32_t      i;
-    uint32_t      reg_read;
-    uint32_t      reg32        = CANBTR1;
-    char         *p_reg32_str  = "CANBTR1";
-    uint8_t       mask         = CANBTR1_MASK;
-    reg_info_w_t *p_reg_info   = reg_info_w_CANBTR1;
-    uint32_t      reg_info_len = ARRAY_SIZE(reg_info_w_CANBTR0);
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANBTR1";
+    check_wr_reg.offset = CANBTR1;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANBTR1_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANBTR1;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANBTR1);
     //-----------------------------------------------------------
-    REG32_CAN(reg32) = reg_write;
-    p_reg_info[CANBTR1_bit7].write   = GET_REG32_BIT(0, reg_write);
-    p_reg_info[CANBTR1_bit6_4].write = GET_REG32_MULTI_BIT(0x03, 6, reg_write);
-    p_reg_info[CANBTR1_bit3_0].write = GET_REG32_MULTI_BIT(0x03, 6, reg_write);
-    reg_read = REG32_CAN(reg32);
-    p_reg_info[CANBTR0_bit4_0].read  = GET_REG32_MULTI_BIT(0x1f, 0, reg_write);
-    p_reg_info[CANBTR0_bit7_6].read  = GET_REG32_MULTI_BIT(0x03, 6, reg_write);
-    printf("reg:[%s] offset:[%#x]\n", p_reg32_str, reg32);
-    if ((reg_read & mask) != (reg_write & mask)) {
-        for (i = 0; i < reg_info_len; i++) {
-            if (strcmp(p_reg_info[i].access, "W/R") == 0) {
-                p_reg_info[i].result = (p_reg_info[i].write != p_reg_info[i].read) ? "X" : "";
-            }
-        }
-        print_reg_info_write(p_reg_info, reg_info_len);
-        printf("write: [%#x]\nread:  [%#x]\nMASK:  [%#x]\nresult:[%s]\n\n", reg_write, reg_read, mask, (reg_read & mask) != (reg_write & mask) ? "X" : "ok");
-    }
-    else
-    {
-        printf("reg:[%s] write:[%#x] read:[%#x] result:[OK]\n", p_reg32_str, reg_write, reg_read);
-    }
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;;
+    p_reg_info[CANBTR1_bit3_0].write = GET_REG32_MULTI_BIT(0x0F, 0, check_wr_reg.write);
+    p_reg_info[CANBTR1_bit6_4].write = GET_REG32_MULTI_BIT(0x07, 4, check_wr_reg.write);
+    p_reg_info[CANBTR1_bit7].write   = GET_REG32_MULTI_BIT(0X01, 7, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANBTR1_bit3_0].read  = GET_REG32_MULTI_BIT(0x0F, 0, check_wr_reg.read);
+    p_reg_info[CANBTR1_bit6_4].read  = GET_REG32_MULTI_BIT(0x07, 4, check_wr_reg.read);
+    p_reg_info[CANBTR1_bit7].read    = GET_REG32_MULTI_BIT(0X01, 7, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
 }
 
+static void wr_reg_info_CANOCR(uint32_t reg_write)
+{
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANOCR";
+    check_wr_reg.offset = CANOCR;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANOCR_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANOCR;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANOCR);
+    //-----------------------------------------------------------
+    REG32_CAN(check_wr_reg.offset)  = check_wr_reg.write;;
+    p_reg_info[CANOCR_bit1_0].write = GET_REG32_MULTI_BIT(0x03, 0, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANOCR_bit1_0].read  = GET_REG32_MULTI_BIT(0x03, 0, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
+}
 
+static void wr_reg_info_CANACR(uint32_t reg_write)
+{
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANACR";
+    check_wr_reg.offset = CANACR;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANACR_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANACR;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANACR);
+    //-----------------------------------------------------------
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;;
+    p_reg_info[CANACR_bit3_0].write = GET_REG32_MULTI_BIT(0x0F, 0, check_wr_reg.write);
+    p_reg_info[CANACR_bit7_4].write = GET_REG32_MULTI_BIT(0x0F, 4, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANACR_bit3_0].read  = GET_REG32_MULTI_BIT(0x0F, 0, check_wr_reg.read);
+    p_reg_info[CANACR_bit7_4].read  = GET_REG32_MULTI_BIT(0x0F, 4, check_wr_reg.read);
+     check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
+}
 
+static void wr_reg_info_CANRBSA(uint32_t reg_write)
+{
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANRBSA";
+    check_wr_reg.offset = CANRBSA;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANRBSA_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANRBSA;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANRBSA);
+    //-----------------------------------------------------------
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;;
+    p_reg_info[CANRBSA_bit5_0].write = GET_REG32_MULTI_BIT(0x3F, 0, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANRBSA_bit5_0].read  = GET_REG32_MULTI_BIT(0x3F, 0, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
+}
 
-
+static void wr_reg_info_CANCDR(uint32_t reg_write)
+{
+    check_wr_reg_t check_wr_reg;
+    check_wr_reg.name   = "CANCDR";
+    check_wr_reg.offset = CANCDR;
+    check_wr_reg.write  = reg_write;
+    check_wr_reg.mask   = CANCDR_MASK;
+    reg_info_wr_t *p_reg_info   = reg_info_wr_CANCDR;
+    uint32_t       reg_info_len = ARRAY_SIZE(reg_info_wr_CANCDR);
+    //-----------------------------------------------------------
+    REG32_CAN(check_wr_reg.offset) = check_wr_reg.write;;
+    p_reg_info[CANCDR_bit7_0].write = GET_REG32_MULTI_BIT(0XFF, 0, check_wr_reg.write);
+    check_wr_reg.read = REG32_CAN(check_wr_reg.offset);
+    p_reg_info[CANCDR_bit7_0].read  = GET_REG32_MULTI_BIT(0XFF, 0, check_wr_reg.read);
+    check_wr_reg_info(&check_wr_reg, p_reg_info, reg_info_len);
+}
 
 
 
