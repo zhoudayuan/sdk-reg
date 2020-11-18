@@ -242,6 +242,8 @@ static void show_reg_info_CANMOD(uint32_t reg_val);
 static void print_reg_info_read(reg_info_t *p_reg_info, uint32_t reg_info_len);
 static void print_reg_info_write(reg_info_wr_t *reg_info_w, uint32_t reg_info_w_len);
 static void write_all_reg(uint32_t reg_write);
+static void check_wr_reg_info(check_wr_reg_t *p_check, reg_info_wr_t *p_reg, uint32_t reg_len);
+// reg-wr
 static void wr_reg_info_CANMOD(uint32_t reg_write);
 static void wr_reg_info_CANIER(uint32_t reg_write);
 static void wr_reg_info_CANBTR0(uint32_t reg_write);
@@ -251,7 +253,41 @@ static void wr_reg_info_CANACR(uint32_t reg_write);
 static void wr_reg_info_CANRBSA(uint32_t reg_write);
 static void wr_reg_info_CANCDR(uint32_t reg_write);
 
-static void check_wr_reg_info(check_wr_reg_t *p_check, reg_info_wr_t *p_reg, uint32_t reg_len);
+
+typedef void (*wr_reg_info_f)(uint32_t reg_write);
+
+wr_reg_info_f wr_reg_info_array[] = {
+    wr_reg_info_CANMOD,
+    wr_reg_info_CANIER,
+    wr_reg_info_CANBTR0,
+    wr_reg_info_CANBTR1,
+    wr_reg_info_CANOCR,
+    wr_reg_info_CANACR,
+    wr_reg_info_CANRBSA,
+    wr_reg_info_CANCDR,
+};
+
+void test_case_reg_wr()
+{
+    uint32_t i,j;
+    uint32_t wr_val[] = {
+        0xffffffff,
+        0xAAAAAAAA,
+        0x55555555,
+        0x00000000,
+    };
+
+    printf("test: CANMOD, CANIER, CANBTR0, CANBTR1, CANOCR, CANACR, CANRBSA, CANCDR\n");
+    printf("op:   step-1: write, step-2:read\n");
+    printf("write value: 0xffffffff, 0xAAAAAAAA, 0x55555555, 0x00000000\n");
+
+    for (i = 0; i < ARRAY_SIZE(wr_val); i++) {
+        printf("round:[%u] input:[%#x]\n", i+1, wr_val[i]);
+        for (j = 0; j < ARRAY_SIZE(wr_reg_info_array); j++)
+        wr_reg_info_array[j](wr_val[i]);
+    }
+}
+
 
 int main(void)
 {
@@ -260,23 +296,7 @@ int main(void)
         printf("Hello my friends!\n");
     }
 
-    //show_all_reg();
-    //show_reg_info_CANMOD(REG32_CAN(CANMOD));
-    //WRITE_REG32_CAN(CANMOD, 0xffffffff);
-    //wr_reg_info_CANMOD
-    //wr_reg_info_CANMOD(0xffffffff);
-    //show_reg_info_CANMOD(REG32_CAN(CANMOD));
-    //write_all_reg(0xffffffff);
-    //show_all_reg();
-
-    wr_reg_info_CANMOD(0xffffffff);
-    wr_reg_info_CANIER(0xffffffff);
-    wr_reg_info_CANBTR0(0xffffffff);
-    wr_reg_info_CANBTR1(0xffffffff);
-    wr_reg_info_CANOCR(0xffffffff);
-    wr_reg_info_CANACR(0xffffffff);
-    wr_reg_info_CANRBSA(0xffffffff);
-    wr_reg_info_CANCDR(0xffffffff);
+    test_case_reg_wr();
     return 0;
 }
 
