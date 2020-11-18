@@ -1,0 +1,11 @@
+*.d
+#*.S
+*.o
+*.elf
+#*.orig
+#*.session
+.vscode
+
+
+
+

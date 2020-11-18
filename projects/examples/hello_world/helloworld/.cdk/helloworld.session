@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Session Name="D:\wujian\fpga-bin\prj_hello\sdk\projects\examples\hello_world\helloworld\helloworld.cdkws">
+  <int Value="1" Name="m_selectedTab"/>
+  <wxString Value="D:\wujian\fpga-bin\prj_hello\sdk\projects\examples\hello_world\helloworld\helloworld.cdkws" Name="m_workspaceName"/>
+  <TabInfoArray Name="TabInfoArray">
+    <TabInfo>
+      <wxString Value="D:\wujian\fpga-bin\prj_hello\sdk\projects\examples\hello_world\main.c" Name="FileName"/>
+      <int Value="0" Name="FirstVisibleLine"/>
+      <int Value="17" Name="CurrentLine"/>
+      <wxArrayString Name="Bookmarks"/>
+      <IntVector Name="CollapsedFolds"/>
+    </TabInfo>
+    <TabInfo>
+      <wxString Value="d:\wujian\fpga-bin\prj_hello\sdk\csi_driver\wujian100_open\startup.S" Name="FileName"/>
+      <int Value="122" Name="FirstVisibleLine"/>
+      <int Value="121" Name="CurrentLine"/>
+      <wxArrayString Name="Bookmarks"/>
+      <IntVector Name="CollapsedFolds"/>
+    </TabInfo>
+  </TabInfoArray>
+  <SerializedObject Name="m_breakpoints">
+    <long Value="0" Name="Count"/>
+  </SerializedObject>
+</Session>
